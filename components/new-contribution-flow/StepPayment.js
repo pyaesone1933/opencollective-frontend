@@ -75,33 +75,6 @@ const messages = defineMessages({
   },
 });
 
-const getPaymentObject = (option, paymentObject) => {
-  const optionValue = option.value || option;
-  if (!option.name || option.name === 'PaymentMethod') {
-    return {
-      paymentMethod: optionValue,
-      title: optionValue.title,
-      key: optionValue.key,
-    };
-  } else if (option.name === 'newCreditCardInfo') {
-    return {
-      ...paymentObject,
-      paymentMethod: { type: 'creditcard', service: 'stripe' },
-      key: 'newCreditCard',
-      save: true,
-      isNew: true,
-      data: optionValue,
-      error: null,
-    };
-  } else if (option.name === 'save') {
-    return {
-      ...paymentObject,
-      save: optionValue.checked,
-      isNew: true,
-    };
-  }
-};
-
 const formatPaymentMethodError = (intl, collective, error) => {
   if (!messages[error.messageId]) {
     return error.messageId;
@@ -143,19 +116,19 @@ const NewContributionFlowStepPayment = ({
     }
   }, [paymentMethods, stepProfile, stepDetails, collective]);
 
-  const setNewPaymentMethod = option => {
+  const setNewPaymentMethod = (key, paymentMethod) => {
     if (!paymentMethodsError) {
-      const newPaymentObject = getPaymentObject(option, stepPayment);
-      if (newPaymentObject) {
-        onChange({ stepPayment: newPaymentObject });
-      }
+      onChange({ stepPayment: { key, paymentMethod } });
     }
   };
 
   // Set default payment method
   useEffect(() => {
-    if (!stepPayment && !isEmpty(paymentOptions)) {
-      setNewPaymentMethod(first(paymentOptions));
+    if (!loading && !stepPayment && !isEmpty(paymentOptions)) {
+      const firstOption = first(paymentOptions);
+      if (firstOption) {
+        setNewPaymentMethod(firstOption.key, firstOption.paymentMethod);
+      }
     }
   }, [paymentOptions, stepPayment]);
 
@@ -175,8 +148,8 @@ const NewContributionFlowStepPayment = ({
           name="PaymentMethod"
           keyGetter="key"
           options={paymentOptions}
-          onChange={setNewPaymentMethod}
-          value={stepPayment?.key}
+          value={stepPayment?.key || null}
+          onChange={option => setNewPaymentMethod(option.key, option.value.paymentMethod)}
         >
           {({ radio, checked, index, value }) => (
             <PaymentMethodBox
@@ -211,8 +184,8 @@ const NewContributionFlowStepPayment = ({
                   <NewCreditCardForm
                     name="newCreditCardInfo"
                     profileType={get(stepProfile, 'type')}
-                    onChange={setNewPaymentMethod}
                     hidePostalCode={hideCreditCardPostalCode}
+                    onChange={paymentMethod => setNewPaymentMethod('newCreditCardInfo', paymentMethod)}
                   />
                 </Box>
               )}

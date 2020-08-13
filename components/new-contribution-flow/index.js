@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { graphql } from '@apollo/client/react/hoc';
 import { get, pick } from 'lodash';
 import memoizeOne from 'memoize-one';
 import { defineMessages, injectIntl } from 'react-intl';
@@ -7,6 +8,7 @@ import styled from 'styled-components';
 
 import { CollectiveType } from '../../lib/constants/collectives';
 import { TierTypes } from '../../lib/constants/tiers-types';
+import { API_V2_CONTEXT, gqlV2 } from '../../lib/graphql/helpers';
 import { getDefaultTierAmount, getTierMinAmount, isFixedContribution } from '../../lib/tier-utils';
 import { getWebsiteUrl } from '../../lib/utils';
 import { Router } from '../../server/pages';
@@ -70,6 +72,7 @@ class ContributionFlow extends React.Component {
     tier: PropTypes.object,
     intl: PropTypes.object,
     createUser: PropTypes.func,
+    createOrder: PropTypes.func.isRequired,
     fixedInterval: PropTypes.string,
     fixedAmount: PropTypes.number,
     skipStepDetails: PropTypes.bool,
@@ -83,6 +86,7 @@ class ContributionFlow extends React.Component {
     super(props);
     this.mainContainerRef = React.createRef();
     this.state = {
+      stepProfile: null,
       stepPayment: null,
       stepSummary: null,
       stepDetails: {
@@ -94,7 +98,28 @@ class ContributionFlow extends React.Component {
   }
 
   onComplete = () => {
-    console.log(this.state);
+    const { stepDetails, stepPayment, stepProfile, stepSummary } = this.state;
+
+    const order = {
+      quantity: stepDetails.quantity,
+      amount: { valueInCents: stepDetails.amount },
+      interval: stepDetails.interval,
+      platformContributionAmount: stepDetails.feesOnTop && { valueInCents: stepDetails.feesOnTop },
+      fromAccount: pick(stepProfile, ['id']),
+      account: pick(this.props.collective, ['id']),
+      paymentMethod: pick(stepPayment?.paymentMethod, ['id', 'service', 'token']),
+      customData: stepDetails.customData,
+      taxes: stepSummary && [
+        {
+          type: 'VAT',
+          amount: stepSummary.amount || 0,
+          country: stepSummary.countryISO,
+          idNumber: stepSummary.number,
+        },
+      ],
+    };
+
+    return this.props.createOrder({ variables: { order } });
   };
 
   getEmailRedirectURL() {
@@ -350,4 +375,21 @@ class ContributionFlow extends React.Component {
   }
 }
 
-export default injectIntl(withUser(addSignupMutation(ContributionFlow)));
+const addCreateOrderMutation = graphql(
+  gqlV2/* GraphQL */ `
+    mutation CreateOrder($order: OrderCreateInput!) {
+      createOrder(order: $order) {
+        id
+        status
+      }
+    }
+  `,
+  {
+    name: 'createOrder',
+    options: {
+      context: API_V2_CONTEXT,
+    },
+  },
+);
+
+export default injectIntl(withUser(addSignupMutation(addCreateOrderMutation(ContributionFlow))));
