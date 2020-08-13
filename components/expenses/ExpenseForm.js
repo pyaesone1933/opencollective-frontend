@@ -100,6 +100,7 @@ const msg = defineMessages({
 
 const getDefaultExpense = collective => ({
   description: '',
+  longDescription: '',
   items: [],
   attachedFiles: [],
   payee: null,
@@ -123,7 +124,7 @@ export const prepareExpenseForSubmit = expenseData => {
   const isInvoice = expenseData.type === expenseTypes.INVOICE;
   const isFundingRequest = expenseData.type === expenseTypes.FUNDING_REQUEST;
   return {
-    ...pick(expenseData, ['id', 'description', 'type', 'privateMessage', 'invoiceInfo', 'tags']),
+    ...pick(expenseData, ['id', 'description', 'longDescription', 'type', 'privateMessage', 'invoiceInfo', 'tags']),
     payee: expenseData.payee && { [payeeIdField]: expenseData.payee.id },
     payoutMethod: pick(expenseData.payoutMethod, ['id', 'name', 'data', 'isSaved', 'type']),
     payeeLocation: isInvoice ? pick(expenseData.payeeLocation, ['address', 'country']) : null,
@@ -198,7 +199,7 @@ const getPayoutMethodsFromPayee = payee => {
   }
 
   // If the Payee is in the "Collective" family (Collective, Fund, Event, Project)
-  // Then the Account Balance should its only option
+  // Then the Account Balance should be its only option
   if (payee && CollectiveFamilyTypes.includes(payee.type)) {
     filteredPms = filteredPms.filter(pm => pm.type === PayoutMethodType.ACCOUNT_BALANCE);
   }
@@ -351,7 +352,7 @@ const ExpenseFormBody = ({
                     <Flex alignItems="center" mt={20} mb={10}>
                       <P
                         as="label"
-                        htmlFor="expense-message"
+                        htmlFor="expense-longDescription"
                         color="black.900"
                         fontSize="16px"
                         lineHeight="24px"
@@ -375,12 +376,11 @@ const ExpenseFormBody = ({
                     </Flex>
                     <Field
                       as={StyledTextarea}
-                      id="expense-message"
-                      name="message"
+                      id="expense-longDescription"
+                      name="longDescription"
                       placeholder=""
                       width="100%"
                       fontSize="P"
-                      border="0"
                       error={errors.message}
                       mt={3}
                       px={2}

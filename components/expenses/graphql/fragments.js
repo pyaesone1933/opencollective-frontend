@@ -85,6 +85,7 @@ export const expensePageExpenseFieldsFragment = gqlV2/* GraphQL */ `
     id
     legacyId
     description
+    longDescription
     currency
     type
     status
